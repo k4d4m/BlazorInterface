@@ -1,0 +1,147 @@
+﻿@page "/"
+@using AirportInterface.Shared
+@inject HttpClient Http
+@namespace Radzen
+
+<h1>Hello!</h1>
+
+<p>Welcome to the flight info client. Please select the parameters to search flight data.</p>
+
+<p>
+    Airport:
+    @foreach (var choice in new[] { Choices_provider.Heathrow, Choices_provider.LondonLuton })
+    {
+        <label>
+            <input name="selectedAirport" type="radio"
+                   value="@choice"
+                   checked="@(currentChoice_provider == choice)"
+                   @onchange="@(() => { currentChoice_provider = choice; })">
+            @choice.ToString()
+        </label>
+    }
+</p>
+<p>
+    Direction:
+    @foreach (var choice in new[] { Choices_direction.Arriving, Choices_direction.Departing, Choices_direction.Both })
+    {
+        <label>
+            <input name="selectedDirection" type="radio"
+                   value="@choice"
+                   checked="@(currentChoice_direction == choice)"
+                   @onchange="@(() => { currentChoice_direction = choice; })">
+            @choice.ToString()
+        </label>
+    }
+</p>
+
+<p>City or FlightID:<RadzenTextBox Style="margin-bottom: 20px" @oninput="@(args => Change(args.Value.ToString(), "TextBox with change on every input"))" /></p>
+
+<p><button class="btn btn-primary" @onclick="search">Search</button></p>
+
+
+<h1>Flight information</h1>
+
+@if (flights == null)
+{
+    <p><em>Nothing found, please refine your search parameters.</em></p>
+}
+else if (displayed_style == Choices_provider.Heathrow)
+{
+    <p>Data pulled from @flights[0].InfoProvider airport at @flights[0].PullDate.</p>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Direction</th>
+                <th>Flight ID</th>
+                <th>Date</th>
+                <th>City</th>
+                <th>Terminal</th>
+                <th>Airline</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var flight in flights)
+            {
+                <tr>
+                    <td>@flight.Direction</td>
+                    <td>@flight.Flight_id</td>
+                    <td>@flight.Date</td>
+                    <td>@flight.City</td>
+                    <td>@flight.Terminal</td>
+                    <td>@flight.Airline</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else if (displayed_style == Choices_provider.LondonLuton)
+{
+    <p>Data pulled from @flights[0].InfoProvider airport at @flights[0].PullDate.</p>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Direction</th>
+                <th>Flight ID</th>
+                <th>Date</th>
+                <th>City</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var flight in flights)
+            {
+                <tr>
+                    <td>@flight.Direction</td>
+                    <td>@flight.Flight_id</td>
+                    <td>@flight.Date</td>
+                    <td>@flight.City</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+
+    enum Choices_provider { Heathrow, LondonLuton };
+    Choices_provider currentChoice_provider = Choices_provider.Heathrow;
+    Choices_provider displayed_style;
+
+    enum Choices_direction { Arriving, Departing, Both };
+    Choices_direction currentChoice_direction = Choices_direction.Both;
+
+    string current_text;
+    private FlightForecast[] flights;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        flights = null;
+    }
+
+    private async Task search()
+    {
+
+        try
+        {
+            if (current_text != null && current_text.Length > 0)
+            {
+                flights = await Http.GetFromJsonAsync<FlightForecast[]>("api/FlightForecast/" + currentChoice_provider + "/" + currentChoice_direction + "/" + current_text);
+            }
+            else
+            {
+                flights = await Http.GetFromJsonAsync<FlightForecast[]>("api/FlightForecast/" + currentChoice_provider + "/" + currentChoice_direction + "/null");
+            }
+            displayed_style = currentChoice_provider;
+        }
+        catch
+        {
+            flights = null;
+        }
+    }
+
+    void Change(string value, string name)
+    {
+        current_text = value;
+    }
+
+}
